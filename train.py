@@ -29,7 +29,7 @@ class Trainer:
             num_epochs: int = 10, 
             max_length: int = 128, 
             batch_size: int = 8,
-            mixed_precision_dtype =  torch.float16,
+            mixed_precision_dtype =  None,
             gradient_accumulation_steps: int = 16):
         """
         Initialize the Trainer class.
@@ -355,7 +355,7 @@ if __name__ == "__main__":
         max_length = max_length,
         batch_size = batch_size,
         gpu_id=local_rank,
-        mixed_precision_dtype = mixed_precision_dtype,
+        mixed_precision_dtype = torch.float16,
         tokenizer=tokenizer,
         output_dir= OUTPUT_DIR,
         is_ddp_training = True if distributed_strategy == "ddp" else False,
