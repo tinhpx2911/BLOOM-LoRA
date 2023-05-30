@@ -29,7 +29,7 @@ class Trainer:
             num_epochs: int = 10, 
             max_length: int = 128, 
             batch_size: int = 8,
-            mixed_precision_dtype =  None,
+            mixed_precision_dtype =  torch.float16,
             gradient_accumulation_steps: int = 16):
         """
         Initialize the Trainer class.
