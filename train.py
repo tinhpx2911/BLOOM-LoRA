@@ -23,7 +23,7 @@ class Trainer:
     def __init__( self,
             model, 
             tokenizer, 
-            gpu_id: int, 
+            gpu_id: int = 2, 
             is_ddp_training: bool = True, 
             output_dir: str = 'checkpoints/',  
             num_epochs: int = 10, 
