@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 
 from peft import LoraConfig, get_peft_model
-from transformers import AutoConfig, AutoTokenizer
+from transformers import AutoConfig, AutoTokenizer, DataCollatorForSeq2Seq, AutoModelForCausalLM
 
 from contextlib import nullcontext
 
@@ -174,31 +174,19 @@ class Trainer:
         # use 'DistributedSampler' for 'sampler' argument, else use 'None'.
         # Use 'DataCollatorForSeq2Seq' for 'collate_fn', passing 'tokenizer', padding settings, and return_tensors="pt".
         
-        data_trainloader = DataLoader(
-        dataset=train_dataset,
-        batch_size=self.batch_size,
-        sampler=torch.utils.data.distributed.DistributedSampler(train_dataset) if self.is_ddp_training else None,
-        collate_fn=DataCollatorForSeq2Seq(
-        tokenizer=self.tokenizer,
-        padding=True,
-        pad_to_multiple_of=8,
-        return_tensors="pt")
-        ) ### YOUR CODE HERE ###
+        data_trainloader = torch.utils.data.DataLoader(train_dataset, 
+                                                       batch_size=self.batch_size, 
+                                                       sampler=torch.utils.data.distributed.DistributedSampler(train_dataset) if self.is_ddp_training else None,
+                                                       collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) ### YOUR CODE HERE ###
 
         # TODO: Prepare the evaluation DataLoader. Initialize 'DataLoader' with 'eval_dataset', 
         # the appropriate 'batch_size', and 'SequentialSampler' for 'sampler'.
         # Use 'DataCollatorForSeq2Seq' for 'collate_fn', passing 'tokenizer', padding settings, and return_tensors type.
         
-        data_testloader = DataLoader(
-        dataset=eval_dataset,
-        batch_size=self.batch_size,
-        sampler=torch.utils.data.SequentialSampler.SequentialSampler(eval_dataset),
-        collate_fn=DataCollatorForSeq2Seq(
-        tokenizer=self.tokenizer,
-        padding=True,
-        pad_to_multiple_of=8,
-        return_tensors="pt")
-        ) ### YOUR CODE HERE ###
+        data_testloader = torch.utils.data.DataLoader(eval_dataset, 
+                                                      batch_size=self.batch_size, 
+                                                      sampler=torch.utils.data.SequentialSampler(eval_dataset),
+                                                      collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) ### YOUR CODE HERE ###
         
         return data_trainloader, data_testloader
     
@@ -288,7 +276,7 @@ def load_pretrained_model(local_rank, model_path: str = ""):
     # TODO: Load a pretrained AutoModelForCausalLM from the 'model_path' in float16 data type. 
     # Make sure to set 'device_map' to '{"": torch.device(f"cuda:{local_rank}")}' for DDP training.
 
-    model = AutoModelForCausalLM.from_pretrained(model_path) ### YOUR CODE HERE ###
+    model = AutoModelForCausalLM.from_pretrained(model_path, dtype=torch.float16, device_map={"": torch.device(f"cuda:{local_rank}")}) ### YOUR CODE HERE ###
 
     # TODO: Create a LoraConfig with the parameters: r=8, lora_alpha=16, 
     # lora_dropout=0.05, bias="none", task_type="CAUSAL_LM".
@@ -298,7 +286,7 @@ def load_pretrained_model(local_rank, model_path: str = ""):
     lora_config = LoraConfig(r=8, lora_alpha=16, lora_dropout=0.05, bias="none", task_type="CAUSAL_LM") ### YOUR CODE HERE ###
 
     # Create LoRA model
-#     model = LoraModelForCasualLM(model, lora_config)
+    # model = LoraModelForCasualLM(model, lora_config)
     model = get_peft_model(model, lora_config) # Uncomment this line to use PEFT library instead of your implementation in `lora_layer.py`.
     if _is_master_process():
         model.print_trainable_parameters()
