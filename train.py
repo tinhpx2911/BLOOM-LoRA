@@ -145,7 +145,7 @@ class Trainer:
                     ### YOUR CODE HERE ###
                     # TODO: optimizer step
                     # TODO: update scaler factor 
-                    self.gradscaler.scale(loss).backward()
+                    self.gradscaler.scale(epoch_loss).backward()
                     self.gradscaler.step(self.optimizer)
                     self.gradscaler.update()  
                 else:
