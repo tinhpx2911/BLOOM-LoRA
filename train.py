@@ -103,7 +103,6 @@ class Trainer:
             ### YOUR CODE HERE ###
             self.gradscaler.scale(loss)
             loss.backward()
-            self.gradscaler.unscale_(self.optimizer)
         else:
             loss.backward()
 
@@ -146,7 +145,7 @@ class Trainer:
                     # TODO: optimizer step
                     # TODO: update scaler factor 
                     self.gradscaler.step(self.optimizer)
-                    self.gradscaler.zero_grad()
+                    self.gradscaler.update()
                 else:
                     self.optimizer.step()
                 self.optimizer.zero_grad()
