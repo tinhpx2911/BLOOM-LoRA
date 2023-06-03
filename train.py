@@ -102,8 +102,7 @@ class Trainer:
         if self.mixed_precision_dtype==torch.float16:
             ### YOUR CODE HERE ###
             self.gradscaler.scale(loss).backward()
-            self.gradscaler.step(self.optimizer)
-            self.gradscaler.update() 
+            self.gradscaler.unscale_(self.optimizer)
         else:
             loss.backward()
 
@@ -145,9 +144,8 @@ class Trainer:
                     ### YOUR CODE HERE ###
                     # TODO: optimizer step
                     # TODO: update scaler factor 
-                    self.gradscaler.scale(epoch_loss).backward()
                     self.gradscaler.step(self.optimizer)
-                    self.gradscaler.update()  
+                    self.gradscaler.update()
                 else:
                     self.optimizer.step()
                 self.optimizer.zero_grad()
