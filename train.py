@@ -28,7 +28,7 @@ class Trainer:
             output_dir: str = 'checkpoints/',  
             num_epochs: int = 10, 
             max_length: int = 128, 
-            batch_size: int = 1,
+            batch_size: int = 8,
             mixed_precision_dtype =  None,
             gradient_accumulation_steps: int = 16):
         """
@@ -78,7 +78,7 @@ class Trainer:
         # TODO: Initialize the DistributedDataParallel wrapper for the model. 
         # You would need to pass the model and specify the device IDs
         # and output device for the data parallelism.
-        self.model = None ### YOUR CODE HERE ###
+        self.model = torch.nn.parallel.DistributedDataParallel(self.model, device_ids=[self.gpu_id], output_device=self.gpu_id) ### YOUR CODE HERE ###
 
         
     def _run_batch(self, batch):
@@ -324,14 +324,15 @@ if __name__ == "__main__":
     eval_freq = 150
     
     # TODO: Choose strategy
-    distributed_strategy = "no" ### YOUR CODE HERE ###
+    distributed_strategy = "ddp" ### YOUR CODE HERE ###
     
     if distributed_strategy  == "ddp":
         # TODO: Initialize the process group for distributed data parallelism with nccl backend.
         # After that, you should set the 'local_rank' from the environment variable 'LOCAL_RANK'.
         
         # Initialize the process group ### YOUR CODE HERE ###
-        local_rank = None ### YOUR CODE HERE ###
+        torch.distributed.init_process_group(backend=backend)
+        local_rank = int(os.environ["LOCAL_RANK"]) ### YOUR CODE HERE ###
     else:
         os.environ['RANK'] = '0'
         local_rank = 0
@@ -348,7 +349,7 @@ if __name__ == "__main__":
         max_length = max_length,
         batch_size = batch_size,
         gpu_id=local_rank,
-        mixed_precision_dtype = None #torch.float16,  #TODO: Set the mixed precision data type, hint use float16
+        mixed_precision_dtype = None,  #TODO: Set the mixed precision data type, hint use float16
         tokenizer=tokenizer,
         output_dir= OUTPUT_DIR,
         is_ddp_training = True if distributed_strategy == "ddp" else False,
