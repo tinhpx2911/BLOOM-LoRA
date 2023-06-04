@@ -296,7 +296,7 @@ def load_pretrained_model(local_rank, model_path: str = ""):
 
 
 if __name__ == "__main__":
-    OUTPUT_DIR = "checkpoints/"
+    OUTPUT_DIR = "./"
     DRIVER_DATA_PATH = 'https://drive.google.com/file/d/1QpgvQi6mFvN5-6ofmJunDbuz34tlLbLL/view?usp=sharing'
 
     backend = "nccl"
