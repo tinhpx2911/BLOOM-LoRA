@@ -101,9 +101,7 @@ class Trainer:
         # TODO: If 'mixed_precision_dtype' is torch.float16, you have to modify the backward using the gradscaler.
         if self.mixed_precision_dtype==torch.float16:
             ### YOUR CODE HERE ###
-            self.gradscaler.scale(loss)
-            loss.backward()
-            self.gradscaler.unscale_(self.optimizer)
+            self.gradscaler.scale(loss).backward()
         else:
             loss.backward()
 
