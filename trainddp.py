@@ -28,7 +28,7 @@ class Trainer:
             output_dir: str = 'checkpoints/',  
             num_epochs: int = 10, 
             max_length: int = 128, 
-            batch_size: int = 8,
+            batch_size: int = 2,
             mixed_precision_dtype =  None,
             gradient_accumulation_steps: int = 16):
         """
@@ -348,7 +348,7 @@ if __name__ == "__main__":
         max_length = max_length,
         batch_size = batch_size,
         gpu_id=local_rank,
-        mixed_precision_dtype = None,  #TODO: Set the mixed precision data type, hint use float16
+        mixed_precision_dtype = torch.float16,  #TODO: Set the mixed precision data type, hint use float16
         tokenizer=tokenizer,
         output_dir= OUTPUT_DIR,
         is_ddp_training = True if distributed_strategy == "ddp" else False,
