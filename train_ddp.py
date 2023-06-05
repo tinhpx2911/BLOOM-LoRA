@@ -185,7 +185,7 @@ class Trainer:
         
         data_testloader = torch.utils.data.DataLoader(eval_dataset, 
                                                       batch_size=self.batch_size, 
-                                                      sampler=torch.utils.data.SequentialSampler(eval_dataset, rank=self.gpu_id),
+                                                      sampler=torch.utils.data.SequentialSampler(eval_dataset),
                                                       collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) ### YOUR CODE HERE ###
         
         return data_trainloader, data_testloader
@@ -347,7 +347,7 @@ if __name__ == "__main__":
         max_length = max_length,
         batch_size = batch_size,
         gpu_id=local_rank,
-        mixed_precision_dtype = None, #torch.float16,  #TODO: Set the mixed precision data type, hint use float16
+        mixed_precision_dtype = torch.float16,  #TODO: Set the mixed precision data type, hint use float16
         tokenizer=tokenizer,
         output_dir= OUTPUT_DIR,
         is_ddp_training = True if distributed_strategy == "ddp" else False,
