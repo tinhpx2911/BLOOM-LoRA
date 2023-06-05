@@ -176,7 +176,7 @@ class Trainer:
         
         data_trainloader = torch.utils.data.DataLoader(train_dataset, 
                                                        batch_size=self.batch_size,
-                                                       sampler=torch.utils.data.distributed.DistributedSampler(train_dataset,rank=self.gpu_id) if self.is_ddp_training else None,
+                                                       sampler=torch.utils.data.distributed.DistributedSampler(train_dataset, rank=self.gpu_id) if self.is_ddp_training else None,
                                                        collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) ### YOUR CODE HERE ###
 
         # TODO: Prepare the evaluation DataLoader. Initialize 'DataLoader' with 'eval_dataset', 
@@ -185,7 +185,7 @@ class Trainer:
         
         data_testloader = torch.utils.data.DataLoader(eval_dataset, 
                                                       batch_size=self.batch_size, 
-                                                      sampler=torch.utils.data.SequentialSampler(eval_dataset),
+                                                      sampler=torch.utils.data.SequentialSampler(eval_dataset, rank=self.gpu_id),
                                                       collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) ### YOUR CODE HERE ###
         
         return data_trainloader, data_testloader
