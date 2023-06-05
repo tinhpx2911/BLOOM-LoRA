@@ -28,9 +28,9 @@ class Trainer:
             output_dir: str = 'checkpoints/',  
             num_epochs: int = 10, 
             max_length: int = 128, 
-            batch_size: int = 2,
+            batch_size: int = 4,
             mixed_precision_dtype =  None,
-            gradient_accumulation_steps: int = 16):
+            gradient_accumulation_steps: int = 32):
         """
         Initialize the Trainer class.
 
