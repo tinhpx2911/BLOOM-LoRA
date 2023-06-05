@@ -166,9 +166,6 @@ class Trainer:
         
         else:
             self.model.save_pretrained(checkpoint_path_dir)
-        
-        else:
-            self.model.save_pretrained(checkpoint_path_dir)
 
     def prepare_dataloader(self, train_dataset, eval_dataset):
         # TODO: Prepare the training DataLoader. Initialize 'DataLoader' with 'train_dataset' 
