@@ -176,8 +176,7 @@ class Trainer:
         
         data_trainloader = torch.utils.data.DataLoader(train_dataset, 
                                                        batch_size=self.batch_size,
-                                                       sampler=torch.utils.data.SequentialSampler(train_dataset),
-                                                       #sampler=torch.utils.data.distributed.DistributedSampler(train_dataset) if self.is_ddp_training else None,
+                                                       sampler=torch.utils.data.distributed.DistributedSampler(train_dataset) if self.is_ddp_training else None,
                                                        collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) ### YOUR CODE HERE ###
 
         # TODO: Prepare the evaluation DataLoader. Initialize 'DataLoader' with 'eval_dataset', 
