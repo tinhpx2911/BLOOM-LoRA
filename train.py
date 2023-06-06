@@ -70,15 +70,15 @@ class Trainer:
             self.ctx = nullcontext()
         else:
             # TODO Otherwise, use 'torch.amp.autocast' context with the specified dtype, and initialize GradScaler if mixed_precision_dtype is float16.
-            self.ctx = None ### YOUR CODE HERE ###
-            self.gradscaler = None ### YOUR CODE HERE ###
+            self.ctx = torch.amp.autocast(device_type='cuda', dtype=mixed_precision_dtype) ### YOUR CODE HERE ###
+            self.gradscaler = torch.cuda.amp.GradScaler() ### YOUR CODE HERE ###
             
 
     def _set_ddp_training(self):
         # TODO: Initialize the DistributedDataParallel wrapper for the model. 
         # You would need to pass the model and specify the device IDs
         # and output device for the data parallelism.
-        self.model = None ### YOUR CODE HERE ###
+        self.model = torch.nn.parallel.DistributedDataParallel(self.model, device_ids=[self.gpu_id], output_device=self.gpu_id) ### YOUR CODE HERE ###
 
         
     def _run_batch(self, batch):
@@ -101,7 +101,7 @@ class Trainer:
         # TODO: If 'mixed_precision_dtype' is torch.float16, you have to modify the backward using the gradscaler.
         if self.mixed_precision_dtype==torch.float16:
             ### YOUR CODE HERE ###
-            pass 
+            self.gradscaler.scale(loss).backward()
         else:
             loss.backward()
 
@@ -143,7 +143,8 @@ class Trainer:
                     ### YOUR CODE HERE ###
                     # TODO: optimizer step
                     # TODO: update scaler factor 
-                    pass 
+                    self.gradscaler.step(self.optimizer)
+                    self.gradscaler.update() 
                 else:
                     self.optimizer.step()
                 self.optimizer.zero_grad()
@@ -174,19 +175,21 @@ class Trainer:
         # use 'DistributedSampler' for 'sampler' argument, else use 'None'.
         # Use 'DataCollatorForSeq2Seq' for 'collate_fn', passing 'tokenizer', padding settings, and return_tensors="pt".
         
-        data_trainloader = torch.utils.data.DataLoader(train_dataset, 
-                                                       batch_size=self.batch_size,
-                                                       sampler=torch.utils.data.distributed.DistributedSampler(train_dataset) if self.is_ddp_training else None,
-                                                       collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) ### YOUR CODE HERE ###
+        data_trainloader = torch.utils.data.DataLoader(train_dataset,
+                            sampler=torch.utils.data.distributed.DistributedSampler(train_dataset) if self.is_ddp_training else None,
+                            batch_size=self.batch_size,
+                            collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")
+                        ) ### YOUR CODE HERE ###
 
         # TODO: Prepare the evaluation DataLoader. Initialize 'DataLoader' with 'eval_dataset', 
         # the appropriate 'batch_size', and 'SequentialSampler' for 'sampler'.
         # Use 'DataCollatorForSeq2Seq' for 'collate_fn', passing 'tokenizer', padding settings, and return_tensors type.
         
-        data_testloader = torch.utils.data.DataLoader(eval_dataset, 
-                                                      batch_size=self.batch_size, 
-                                                      sampler=torch.utils.data.SequentialSampler(eval_dataset),
-                                                      collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) ### YOUR CODE HERE ###
+        data_testloader = torch.utils.data.DataLoader(eval_dataset,
+                            sampler=torch.utils.data.SequentialSampler(eval_dataset),
+                            batch_size=self.batch_size,
+                            collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")
+                        ) ### YOUR CODE HERE ###
         
         return data_trainloader, data_testloader
     
@@ -287,7 +290,7 @@ def load_pretrained_model(local_rank, model_path: str = ""):
 
     # Create LoRA model
     model = LoraModelForCasualLM(model, lora_config)
-#     model = get_peft_model(model, lora_config) # Uncomment this line to use PEFT library instead of your implementation in `lora_layer.py`.
+    # model = get_peft_model(model, lora_config) # Uncomment this line to use PEFT library instead of your implementation in `lora_layer.py`.
     if _is_master_process():
         model.print_trainable_parameters()
 
@@ -329,7 +332,8 @@ if __name__ == "__main__":
         # After that, you should set the 'local_rank' from the environment variable 'LOCAL_RANK'.
         
         # Initialize the process group ### YOUR CODE HERE ###
-        local_rank = None ### YOUR CODE HERE ###
+        torch.distributed.init_process_group(backend=backend)
+        local_rank = int(os.environ["LOCAL_RANK"]) ### YOUR CODE HERE ###
     else:
         os.environ['RANK'] = '0'
         local_rank = 0
