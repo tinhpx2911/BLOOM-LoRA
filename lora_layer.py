@@ -264,8 +264,7 @@ class Linear(nn.Linear, LoraLayer):
                     self.lora_B[self.active_adapter].weight @ self.lora_A[self.active_adapter].weight,
                     self.fan_in_fan_out,
                 )
-                * self.scaling[self.active_adapter]
-            ) ### YOUR CODE HERE ###
+                * self.scaling[self.active_adapter]) ### YOUR CODE HERE ###
             self.merged = True ### YOUR CODE HERE ###
 
     def unmerge(self):
@@ -305,8 +304,7 @@ class Linear(nn.Linear, LoraLayer):
                 self.lora_B[self.active_adapter](
                     self.lora_A[self.active_adapter](self.lora_dropout[self.active_adapter](x))
                 )
-                * self.scaling[self.active_adapter]
-            ) ### YOUR CODE HERE ###
+                * self.scaling[self.active_adapter]) ### YOUR CODE HERE ###
         else:
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
         
