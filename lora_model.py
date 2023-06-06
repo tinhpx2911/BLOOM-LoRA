@@ -39,7 +39,7 @@ from lora_layer import LoraLayer, Embedding, Linear
 
 class LoraModel(torch.nn.Module):
 
-    def __init__(self, model, config, adapter_name):
+    def __init__(self, model, config, adapter_name='default'):
         super().__init__()
         self.model = model
         self.forward = self.model.forward
@@ -78,32 +78,11 @@ class LoraModel(torch.nn.Module):
             "init_lora_weights": lora_config.init_lora_weights,
         }
         key_list = [key for key, _ in self.model.named_modules()]
-        is_using_layer_indexes = getattr(lora_config, "layers_to_transform", None) is not None
-        layer_indexing_pattern = getattr(lora_config, "layers_pattern", None)
-
         for key in key_list:
             if isinstance(lora_config.target_modules, str):
                 target_module_found = re.fullmatch(lora_config.target_modules, key)
             else:
                 target_module_found = any(key.endswith(target_key) for target_key in lora_config.target_modules)
-
-            if is_using_layer_indexes and target_module_found:
-                layers_pattern = COMMON_LAYERS_PATTERN if layer_indexing_pattern is None else layer_indexing_pattern
-                layers_pattern = [layers_pattern] if isinstance(layers_pattern, str) else layers_pattern
-
-                for pattern in layers_pattern:
-                    layer_index = re.match(f".*.{pattern}\.(\d+)\.*", key)
-                    if layer_index is not None:
-                        layer_index = int(layer_index.group(1))
-                        if isinstance(lora_config.layers_to_transform, int):
-                            target_module_found = layer_index == lora_config.layers_to_transform
-                        else:
-                            target_module_found = layer_index in lora_config.layers_to_transform
-
-                        break
-                    else:
-                        target_module_found = False
-
             if target_module_found:
                 if not is_target_modules_in_base_model:
                     is_target_modules_in_base_model = True
@@ -133,18 +112,7 @@ class LoraModel(torch.nn.Module):
                         new_module = Linear8bitLt(
                             adapter_name, target.in_features, target.out_features, bias=bias, **eightbit_kwargs
                         )
-                    elif loaded_in_4bit and is_bnb_4bit_available() and isinstance(target, bnb.nn.Linear4bit):
-                        fourbit_kwargs = kwargs.copy()
-                        fourbit_kwargs.update(
-                            {
-                                "compute_dtype": target.compute_dtype,
-                                "compress_statistics": target.weight.compress_statistics,
-                                "quant_type": target.weight.quant_type,
-                            }
-                        )
-                        new_module = Linear4bit(
-                            adapter_name, target.in_features, target.out_features, bias=bias, **fourbit_kwargs
-                        )
+                        
                     elif isinstance(target, torch.nn.Embedding):
                         embedding_kwargs = kwargs.copy()
                         embedding_kwargs.pop("fan_in_fan_out", None)
@@ -250,6 +218,8 @@ class LoraModel(torch.nn.Module):
             if model_config["model_type"] not in TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING:
                 raise ValueError("Please specify `target_modules` in `peft_config`")
             peft_config.target_modules = TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING[model_config["model_type"]]
+        if peft_config.inference_mode:
+            peft_config.merge_weights = True
         return peft_config
 
     def merge_and_unload(self):
@@ -270,11 +240,8 @@ class LoraModel(torch.nn.Module):
             except AttributeError:
                 continue
             if isinstance(target, LoraLayer):
-                if isinstance(target, nn.Embedding):
-                    new_module = torch.nn.Embedding(target.in_features, target.out_features)
-                else:
-                    bias = target.bias is not None
-                    new_module = torch.nn.Linear(target.in_features, target.out_features, bias=bias)
+                bias = target.bias is not None
+                new_module = torch.nn.Linear(target.in_features, target.out_features, bias=bias)
                 target.merge()
                 self._replace_module(parent, target_name, new_module, target)
 
