@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 
 from peft import LoraConfig, get_peft_model
-from transformers import AutoConfig, AutoTokenizer, DataCollatorForSeq2Seq, AutoModelForCausalLM
+from transformers import AutoConfig, AutoTokenizer
 
 from contextlib import nullcontext
 
@@ -70,7 +70,7 @@ class Trainer:
             self.ctx = nullcontext()
         else:
             # TODO Otherwise, use 'torch.amp.autocast' context with the specified dtype, and initialize GradScaler if mixed_precision_dtype is float16.
-            self.ctx = torch.cuda.amp.autocast(dtype=mixed_precision_dtype) ### YOUR CODE HERE ###
+            self.ctx = torch.amp.autocast(device_type='cuda', dtype=mixed_precision_dtype) ### YOUR CODE HERE ###
             self.gradscaler = torch.cuda.amp.GradScaler() ### YOUR CODE HERE ###
             
 
@@ -101,7 +101,7 @@ class Trainer:
         # TODO: If 'mixed_precision_dtype' is torch.float16, you have to modify the backward using the gradscaler.
         if self.mixed_precision_dtype==torch.float16:
             ### YOUR CODE HERE ###
-            self.gradscaler.scale(loss).backward()
+            self.gradscaler.scale(loss).backward() 
         else:
             loss.backward()
 
@@ -144,7 +144,7 @@ class Trainer:
                     # TODO: optimizer step
                     # TODO: update scaler factor 
                     self.gradscaler.step(self.optimizer)
-                    self.gradscaler.update()
+                    self.gradscaler.update() 
                 else:
                     self.optimizer.step()
                 self.optimizer.zero_grad()
@@ -177,7 +177,7 @@ class Trainer:
         
         data_trainloader = torch.utils.data.DataLoader(train_dataset, 
                                                        batch_size=self.batch_size, 
-                                                       sampler=torch.utils.data.distributed.DistributedSampler(train_dataset, rank=self.gpu_id) if self.is_ddp_training else None,
+                                                       sampler=torch.utils.data.distributed.DistributedSampler(train_dataset) if self.is_ddp_training else None,
                                                        collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) ### YOUR CODE HERE ###
 
         # TODO: Prepare the evaluation DataLoader. Initialize 'DataLoader' with 'eval_dataset', 
@@ -288,7 +288,7 @@ def load_pretrained_model(local_rank, model_path: str = ""):
 
     # Create LoRA model
     model = LoraModelForCasualLM(model, lora_config)
-#     model = get_peft_model(model, lora_config) # Uncomment this line to use PEFT library instead of your implementation in `lora_layer.py`.
+    # model = get_peft_model(model, lora_config) # Uncomment this line to use PEFT library instead of your implementation in `lora_layer.py`.
     if _is_master_process():
         model.print_trainable_parameters()
 
