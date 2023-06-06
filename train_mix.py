@@ -73,14 +73,12 @@ class Trainer:
             self.ctx = torch.amp.autocast(device_type='cuda', dtype=mixed_precision_dtype) ### YOUR CODE HERE ###
             self.gradscaler = torch.cuda.amp.GradScaler() ### YOUR CODE HERE ###
             
-
     def _set_ddp_training(self):
         # TODO: Initialize the DistributedDataParallel wrapper for the model. 
         # You would need to pass the model and specify the device IDs
         # and output device for the data parallelism.
         self.model = None ### YOUR CODE HERE ###
 
-        
     def _run_batch(self, batch):
         """
         Run a single training batch.
