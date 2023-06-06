@@ -302,7 +302,7 @@ class Linear(nn.Linear, LoraLayer):
             # TODO: If the LoRA adapter is active and not merged, add the output of the LoRA layers to the result. This involves
             # passing the input through lora_A, applying dropout, then passing it through lora_B. The output is scaled by the
             # LoRA scaling factor and added to the result.
-            result += self.lora_B[self.active_adapter](self.lora_dropout[self.active_adapter](self.lora_A[self.active_adapter](x))) * self.scaling[self.active_adapter]
+            result += self.lora_B[self.active_adapter](self.lora_dropout(self.lora_A[self.active_adapter](x))) * self.scaling[self.active_adapter]
 #             result += self.lora_B[self.active_adapter](self.lora_dropout[self.active_adapter](self.lora_A[self.active_adapter](x))) * self.scaling[self.active_adapter] ### YOUR CODE HERE ###
         else:
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
