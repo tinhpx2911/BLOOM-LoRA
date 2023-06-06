@@ -27,7 +27,7 @@ class Trainer:
             is_ddp_training: bool = True, 
             output_dir: str = 'checkpoints/',  
             num_epochs: int = 10, 
-            max_length: int = 80, 
+            max_length: int = 128, 
             batch_size: int = 2,
             mixed_precision_dtype =  None,
             gradient_accumulation_steps: int = 16):
