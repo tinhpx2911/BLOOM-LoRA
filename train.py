@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm
 
 
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig
 from transformers import AutoConfig, AutoTokenizer, DataCollatorForSeq2Seq, AutoModelForCausalLM
 
 from contextlib import nullcontext
@@ -28,7 +28,7 @@ class Trainer:
             output_dir: str = 'checkpoints/',  
             num_epochs: int = 10, 
             max_length: int = 128, 
-            batch_size: int = 2,
+            batch_size: int = 8,
             mixed_precision_dtype =  None,
             gradient_accumulation_steps: int = 16):
         """
@@ -64,22 +64,17 @@ class Trainer:
         
         
     def set_mixed_precision_context(self, mixed_precision_dtype):
-        # TODO: Setup mixed precision training context
+        # Setup mixed precision training context
         if mixed_precision_dtype is None:
-            # If 'mixed_precision_dtype' is None, use 'nullcontext', 
             self.ctx = nullcontext()
         else:
-            # TODO Otherwise, use 'torch.amp.autocast' context with the specified dtype, and initialize GradScaler if mixed_precision_dtype is float16.
-            self.ctx = torch.amp.autocast(device_type='cuda', dtype=mixed_precision_dtype) ### YOUR CODE HERE ###
-            self.gradscaler = torch.cuda.amp.GradScaler() ### YOUR CODE HERE ###
+            self.ctx = torch.amp.autocast(device_type='cuda', dtype=mixed_precision_dtype) 
+            self.gradscaler = torch.cuda.amp.GradScaler() 
             
 
     def _set_ddp_training(self):
-        # TODO: Initialize the DistributedDataParallel wrapper for the model. 
-        # You would need to pass the model and specify the device IDs
-        # and output device for the data parallelism.
-        self.model = torch.nn.parallel.DistributedDataParallel(self.model, device_ids=[self.gpu_id], output_device=self.gpu_id) ### YOUR CODE HERE ###
-
+        # Initialize the DistributedDataParallel wrapper for the model. 
+        self.model = torch.nn.parallel.DistributedDataParallel(self.model, device_ids=[self.gpu_id], output_device=self.gpu_id) 
         
     def _run_batch(self, batch):
         """
@@ -98,10 +93,9 @@ class Trainer:
             loss = outputs.loss / self.gradient_accumulation_steps  # Normalize loss
         loss_val = loss.item()
         
-        # TODO: If 'mixed_precision_dtype' is torch.float16, you have to modify the backward using the gradscaler.
+        # modify the backward.
         if self.mixed_precision_dtype==torch.float16:
-            ### YOUR CODE HERE ###
-            self.gradscaler.scale(loss).backward()
+            self.gradscaler.scale(loss).backward() 
         else:
             loss.backward()
 
@@ -137,12 +131,8 @@ class Trainer:
             epoch_loss += loss 
             # Perform optimizer step and reset gradients after accumulating enough gradients
             if steps % self.gradient_accumulation_steps == 0:
-    
-                #If 'mixed_precision_dtype' is torch.float16, you have to modify the gradient update step using the gradscaler.
+                # modify the gradient update step.
                 if self.mixed_precision_dtype==torch.float16:
-                    ### YOUR CODE HERE ###
-                    # TODO: optimizer step
-                    # TODO: update scaler factor 
                     self.gradscaler.step(self.optimizer)
                     self.gradscaler.update() 
                 else:
@@ -168,30 +158,19 @@ class Trainer:
         else:
             self.model.save_pretrained(checkpoint_path_dir)
 
-    def prepare_dataloader(self, train_dataset, eval_dataset):
-        # TODO: Prepare the training DataLoader. Initialize 'DataLoader' with 'train_dataset' 
-        # and the appropriate 'batch_size'.
-        # Depending on whether the training is distributed (is_ddp_training), 
-        # use 'DistributedSampler' for 'sampler' argument, else use 'None'.
-        # Use 'DataCollatorForSeq2Seq' for 'collate_fn', passing 'tokenizer', padding settings, and return_tensors="pt".
+    def prepare_dataloader(self, train_dataset, eval_dataset):        
+        # Prepare train data
+        data_trainloader = torch.utils.data.DataLoader(train_dataset, 
+                                                       batch_size=self.batch_size, 
+                                                       sampler=torch.utils.data.distributed.DistributedSampler(train_dataset) if self.is_ddp_training else None,
+                                                       collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) 
+        # Prepare eval data
+        data_evalloader = torch.utils.data.DataLoader(eval_dataset, 
+                                                      batch_size=self.batch_size, 
+                                                      sampler=torch.utils.data.SequentialSampler(eval_dataset),
+                                                      collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) 
         
-        data_trainloader = torch.utils.data.DataLoader(train_dataset,
-                            sampler=torch.utils.data.distributed.DistributedSampler(train_dataset) if self.is_ddp_training else None,
-                            batch_size=self.batch_size,
-                            collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")
-                        ) ### YOUR CODE HERE ###
-
-        # TODO: Prepare the evaluation DataLoader. Initialize 'DataLoader' with 'eval_dataset', 
-        # the appropriate 'batch_size', and 'SequentialSampler' for 'sampler'.
-        # Use 'DataCollatorForSeq2Seq' for 'collate_fn', passing 'tokenizer', padding settings, and return_tensors type.
-        
-        data_testloader = torch.utils.data.DataLoader(eval_dataset,
-                            sampler=torch.utils.data.SequentialSampler(eval_dataset),
-                            batch_size=self.batch_size,
-                            collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")
-                        ) ### YOUR CODE HERE ###
-        
-        return data_trainloader, data_testloader
+        return data_trainloader, data_evalloader
     
     def _eval(self, eval_dataloader, epoch: int):
         avg_loss = 0
@@ -276,29 +255,23 @@ def _is_master_process():
     return ddp_rank == 0
 
 def load_pretrained_model(local_rank, model_path: str = ""):
-    # TODO: Load a pretrained AutoModelForCausalLM from the 'model_path' in float16 data type. 
-    # Make sure to set 'device_map' to '{"": torch.device(f"cuda:{local_rank}")}' for DDP training.
+    # Load a pretrained AutoModelForCausalLM from the 'model_path'. 
+    model = AutoModelForCausalLM.from_pretrained(model_path, device_map={"": torch.device(f"cuda:{local_rank}")}) 
 
-    model = AutoModelForCausalLM.from_pretrained(model_path, device_map={"": torch.device(f"cuda:{local_rank}")}) ### YOUR CODE HERE ###
-
-    # TODO: Create a LoraConfig with the parameters: r=8, lora_alpha=16, 
-    # lora_dropout=0.05, bias="none", task_type="CAUSAL_LM".
-    # We will then use the config to initialize a LoraModelForCasualLM with the loaded model. 
-    # Then, print the trainable parameters of the model.
-
-    lora_config = LoraConfig(r=8, lora_alpha=16, lora_dropout=0.05, bias="none", task_type="CAUSAL_LM") ### YOUR CODE HERE ###
+    # Create a LoraConfig
+    lora_config = LoraConfig(r=8, lora_alpha=16, lora_dropout=0.05, bias="none", task_type="CAUSAL_LM")
 
     # Create LoRA model
     model = LoraModelForCasualLM(model, lora_config)
-    # model = get_peft_model(model, lora_config) # Uncomment this line to use PEFT library instead of your implementation in `lora_layer.py`.
     if _is_master_process():
+        # print the trainable parameters of the model.
         model.print_trainable_parameters()
 
     return model
 
 
 if __name__ == "__main__":
-    OUTPUT_DIR = "checkpoints/"
+    OUTPUT_DIR = "./"
     DRIVER_DATA_PATH = 'https://drive.google.com/file/d/1QpgvQi6mFvN5-6ofmJunDbuz34tlLbLL/view?usp=sharing'
 
     backend = "nccl"
@@ -310,9 +283,9 @@ if __name__ == "__main__":
         download_from_driver(path= DRIVER_DATA_PATH, location_path= data_path)
 
     size_valid_set = 0.1
-    max_length = 512
+    max_length = 128
     num_epochs = 10
-    batch_size = 2
+    batch_size = 4
     gradient_accumulation_steps = 16
 
     learning_rate = 3e-4
@@ -324,16 +297,16 @@ if __name__ == "__main__":
     log_freq = 1
     eval_freq = 150
     
-    # TODO: Choose strategy
-    distributed_strategy = "no" ### YOUR CODE HERE ###
+    # Choose strategy
+    distributed_strategy = "ddp" 
     
     if distributed_strategy  == "ddp":
-        # TODO: Initialize the process group for distributed data parallelism with nccl backend.
-        # After that, you should set the 'local_rank' from the environment variable 'LOCAL_RANK'.
+        # Initialize the process group for distributed data parallelism with nccl backend.
+        # After that, set the 'local_rank' from the environment variable 'LOCAL_RANK'.
         
-        # Initialize the process group ### YOUR CODE HERE ###
+        # Initialize the process group 
         torch.distributed.init_process_group(backend=backend)
-        local_rank = int(os.environ["LOCAL_RANK"]) ### YOUR CODE HERE ###
+        local_rank = int(os.environ["LOCAL_RANK"]) 
     else:
         os.environ['RANK'] = '0'
         local_rank = 0
@@ -350,7 +323,7 @@ if __name__ == "__main__":
         max_length = max_length,
         batch_size = batch_size,
         gpu_id=local_rank,
-        mixed_precision_dtype = torch.float16,  #TODO: Set the mixed precision data type, hint use float16
+        mixed_precision_dtype = torch.float16,
         tokenizer=tokenizer,
         output_dir= OUTPUT_DIR,
         is_ddp_training = True if distributed_strategy == "ddp" else False,
