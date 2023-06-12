@@ -77,4 +77,3 @@ def generate_inference(instruction: str, user_inp: str, model_path:str, lora_wei
     output = get_response(prompt, tokenizer, model, generation_config, max_new_tokens)
     response = prompter.get_response(output)
     return response
-    
