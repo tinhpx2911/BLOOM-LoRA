@@ -275,7 +275,7 @@ if __name__ == "__main__":
     DRIVER_DATA_PATH = 'https://drive.google.com/file/d/1QpgvQi6mFvN5-6ofmJunDbuz34tlLbLL/view?usp=sharing'
 
     backend = "nccl"
-    model_path = 'bigscience/bloom-1b7'
+    model_path = 'bigscience/bloomz-1b7'
     if os.environ.get("DEBUG"):
         data_path = 'test_data.json'
     else:
