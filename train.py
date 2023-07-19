@@ -163,12 +163,12 @@ class Trainer:
         data_trainloader = torch.utils.data.DataLoader(train_dataset, 
                                                        batch_size=self.batch_size, 
                                                        sampler=torch.utils.data.distributed.DistributedSampler(train_dataset) if self.is_ddp_training else None,
-                                                       collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) 
+                                                       collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, pad_to_multiple=8, return_tensors="pt")) 
         # Prepare eval data
         data_evalloader = torch.utils.data.DataLoader(eval_dataset, 
                                                       batch_size=self.batch_size, 
                                                       sampler=torch.utils.data.SequentialSampler(eval_dataset),
-                                                      collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, return_tensors="pt")) 
+                                                      collate_fn=DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True, pad_to_multiple=8, return_tensors="pt")) 
         
         return data_trainloader, data_evalloader
     
@@ -272,7 +272,7 @@ def load_pretrained_model(local_rank, model_path: str = ""):
 
 if __name__ == "__main__":
     OUTPUT_DIR = "./"
-    DRIVER_DATA_PATH = 'https://drive.google.com/file/d/1QpgvQi6mFvN5-6ofmJunDbuz34tlLbLL/view?usp=sharing'
+    DRIVER_DATA_PATH = 'https://drive.google.com/file/d/1rNCKlSQnS1KuAKv9glirceDgwZyf9buw/view?usp=drive_link'
 
     backend = "nccl"
     model_path = 'bigscience/bloomz-1b7'
@@ -283,9 +283,9 @@ if __name__ == "__main__":
         download_from_driver(path= DRIVER_DATA_PATH, location_path= data_path)
 
     size_valid_set = 0.1
-    max_length = 128
+    max_length = 256
     num_epochs = 10
-    batch_size = 4
+    batch_size = 2
     gradient_accumulation_steps = 16
 
     learning_rate = 3e-4
