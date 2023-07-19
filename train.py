@@ -279,7 +279,7 @@ if __name__ == "__main__":
     if os.environ.get("DEBUG"):
         data_path = 'test_data.json'
     else:
-        data_path = 'alpaca_data.json'
+        data_path = 'literature.json'
         download_from_driver(path= DRIVER_DATA_PATH, location_path= data_path)
 
     size_valid_set = 0.1
